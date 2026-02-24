@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Photo Upload</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 500px;
+      margin: auto;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>Stocktake helper for Thrifty Gal Clothing</h2>
+
+<label>Select Photos</label>
+<input type="file" id="photos" multiple accept="image/*" />
+
+<button onclick="uploadFiles()">Upload</button>
+
+<div id="status"></div>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<div id="g_id_onload"
+     data-client_id="567016781695-p09j780ui67ebcv8s1r31uitctn2d124.apps.googleusercontent.com"
+     data-callback="handleCredentialResponse">
+</div>
+<div class="g_id_signin"></div>
+
+<script>
+let idToken = null;
+
+function handleCredentialResponse(response) {
+    idToken = response.credential;
+}
+
+async function uploadFiles() {
+    const files = document.getElementById("photos").files;
+    const status = document.getElementById("status");
+
+    if (!idToken) {
+        status.innerText = "Please sign in with Google first";
+        return;
+    }
+
+    if (files.length === 0) {
+        status.innerText = "Please select files";
+        return;
+    }
+
+    const formData = new FormData();
+    for (let file of files) {
+        formData.append("files", file);
+    }
+
+    status.innerText = "Uploading...";
+
+    try {
+        const res = await fetch("http://localhost:8000/upload", {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + idToken
+            },
+            body: formData
+        });
+
+        if (!res.ok) throw new Error("Upload failed");
+
+        status.innerText = "Upload complete ✅ CSV will be emailed.";
+
+    } catch (err) {
+        status.innerText = "Upload failed ❌";
+        console.error(err);
+    }
+}
+</script>
+
+</body>
+</html>
