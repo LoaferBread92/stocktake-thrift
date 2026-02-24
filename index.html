@@ -76,7 +76,7 @@ async function uploadFiles() {
     status.innerText = "Uploading...";
 
     try {
-        const res = await fetch("https://stocktake-api-567016781695.australia-southeast2.run.app/", {
+        const res = await fetch("https://stocktake-api-567016781695.australia-southeast2.run.app/upload", {
             method: "POST",
             headers: {
                 "Authorization": "Bearer " + idToken
