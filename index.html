@@ -1,30 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Photo Upload</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="UTF-8" />
+<title>Photo Upload</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      max-width: 500px;
-      margin: auto;
-    }
+<style>
+body {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  max-width: 500px;
+  margin: auto;
+}
 
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 10px;
-      font-size: 16px;
-    }
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 16px;
+}
 
-    #status {
-      margin-top: 15px;
-      font-weight: bold;
-    }
-  </style>
+#status {
+  margin-top: 15px;
+  font-weight: bold;
+}
+
+progress {
+  width: 100%;
+  height: 20px;
+  margin-top: 10px;
+}
+</style>
 </head>
 
 <body>
@@ -37,62 +43,88 @@
 <button onclick="uploadFiles()">Upload</button>
 
 <div id="status"></div>
+<progress id="progressBar" value="0" max="100"></progress>
 
 <!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+
 <div id="g_id_onload"
      data-client_id="567016781695-p09j780ui67ebcv8s1r31uitctn2d124.apps.googleusercontent.com"
      data-auto_prompt="false"
      data-callback="handleCredentialResponse">
 </div>
+
 <div class="g_id_signin"></div>
 
 <script>
+
 let idToken = null;
 
 function handleCredentialResponse(response) {
-    idToken = response.credential;
+  idToken = response.credential;
 }
 
 async function uploadFiles() {
-    const files = document.getElementById("photos").files;
-    const status = document.getElementById("status");
 
-    if (!idToken) {
-        status.innerText = "Please sign in with Google first";
-        return;
+  const files = Array.from(document.getElementById("photos").files);
+  const status = document.getElementById("status");
+  const progressBar = document.getElementById("progressBar");
+
+  const MAX_FILES_PER_BATCH = 8;
+  const API_URL = "https://stocktake-api-567016781695.australia-southeast2.run.app/upload";
+
+  if (!idToken) {
+    status.innerText = "Please sign in with Google first";
+    return;
+  }
+
+  if (files.length === 0) {
+    status.innerText = "Please select files";
+    return;
+  }
+
+  const totalBatches = Math.ceil(files.length / MAX_FILES_PER_BATCH);
+
+  progressBar.value = 0;
+
+  try {
+
+    for (let i = 0; i < files.length; i += MAX_FILES_PER_BATCH) {
+
+      const batch = files.slice(i, i + MAX_FILES_PER_BATCH);
+      const formData = new FormData();
+
+      batch.forEach(file => formData.append("files", file));
+
+      const batchNumber = Math.floor(i / MAX_FILES_PER_BATCH) + 1;
+      const isLastBatch = batchNumber === totalBatches;
+
+      formData.append("is_last_batch", isLastBatch);
+
+      status.innerText = `Uploading batch ${batchNumber} of ${totalBatches}...`;
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + idToken
+        },
+        body: formData
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+
+      progressBar.value = (batchNumber / totalBatches) * 100;
     }
 
-    if (files.length === 0) {
-        status.innerText = "Please select files";
-        return;
-    }
+    status.innerText = "Upload complete ✅ CSV will be emailed.";
 
-    const formData = new FormData();
-    for (let file of files) {
-        formData.append("files", file);
-    }
+  } catch (err) {
+    status.innerText = "Upload failed ❌";
+    console.error(err);
+  }
 
-    status.innerText = "Uploading...";
-
-    try {
-        const res = await fetch("https://stocktake-api-567016781695.australia-southeast2.run.app/upload", {
-            method: "POST",
-            headers: {
-                "Authorization": "Bearer " + idToken
-            },
-            body: formData
-        });
-
-        if (!res.ok) throw new Error("Upload failed");
-
-        status.innerText = "Upload complete ✅ CSV will be emailed.";
-
-    } catch (err) {
-        status.innerText = "Upload failed ❌";
-        console.error(err);
-    }
 }
+
 </script>
 
 </body>
