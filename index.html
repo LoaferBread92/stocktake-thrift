@@ -66,6 +66,7 @@ function handleCredentialResponse(response) {
 
 async function uploadFiles() {
 
+  const sessionId = crypto.randomUUID();
   const files = Array.from(document.getElementById("photos").files);
   const status = document.getElementById("status");
   const progressBar = document.getElementById("progressBar");
@@ -98,7 +99,8 @@ async function uploadFiles() {
 
       const batchNumber = Math.floor(i / MAX_FILES_PER_BATCH) + 1;
       const isLastBatch = batchNumber === totalBatches;
-
+    
+      formData.append("session_id", sessionId);
       formData.append("is_last_batch", isLastBatch);
 
       status.innerText = `Uploading batch ${batchNumber} of ${totalBatches}...`;
